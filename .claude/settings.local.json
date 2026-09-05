@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:mdview.t24.ovh)",
+      "PowerShell(npm install 2>&1)",
+      "PowerShell(npm run build 2>&1)",
+      "WebFetch(domain:heroes.thelazy.net)",
+      "PowerShell(Remove-Item C:\\\\Users\\\\pawel.klosek\\\\Plansza\\\\src\\\\core\\\\units.ts -Confirm:$false)",
+      "PowerShell(Remove-Item C:\\\\Users\\\\pawel.klosek\\\\Plansza\\\\karty\\\\src\\\\render\\\\sprites.ts -Confirm:$false -ErrorAction SilentlyContinue)"
+    ]
+  }
+}

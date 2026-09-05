@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 52" width="180" height="52" role="img" aria-label="Logo uczelni (placeholder)">
+  <!-- Zastępcze logo - do podmiany na oficjalną grafikę uczelni. -->
+  <rect x="1" y="1" width="178" height="50" rx="8" fill="#2b1f16" stroke="#e8b23a" stroke-width="1.5"/>
+  <path d="M28 14 L40 20 L28 26 L16 20 Z" fill="#e8b23a"/>
+  <path d="M20 23 v7 c0 4 16 4 16 0 v-7" fill="none" stroke="#e8b23a" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="56" y="24" fill="#f0e3cd" font-family="Segoe UI, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="1">UCZELNIA</text>
+  <text x="56" y="38" fill="#b7a487" font-family="Segoe UI, system-ui, sans-serif" font-size="9" letter-spacing="1.5">PLACEHOLDER</text>
+</svg>

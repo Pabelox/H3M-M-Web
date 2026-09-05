@@ -1,0 +1,16 @@
+{
+  "name": "karty-bitwy",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Turowa gra planszowa na heksach - jednostki ulepszane losowymi kartami",
+  "scripts": {
+    "dev": "vite --port 5175",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  }
+}

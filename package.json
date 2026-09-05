@@ -1,0 +1,16 @@
+{
+  "name": "plansza-bitwa",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Webowa gra planszowa - taktyczna bitwa na heksach z kartami",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  }
+}

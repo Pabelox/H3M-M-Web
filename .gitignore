@@ -1,0 +1,18 @@
+# Zaleznosci i buildy - NIE trafiaja do archiwum na uploader
+node_modules/
+dist/
+build/
+.vite/
+
+# Srodowisko / IDE
+.env
+.env.local
+.vscode/
+.idea/
+*.log
+npm-debug.log*
+
+# System
+Thumbs.db
+desktop.ini
+.DS_Store
