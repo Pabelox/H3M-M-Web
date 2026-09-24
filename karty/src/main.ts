@@ -39,6 +39,7 @@ const view: View = {
   floats: [],
   cardTargets: new Set(),
   cardHexes: new Set(),
+  flashes: new Map(),
 };
 
 const gm = new GameMasterPanel(startBattle);
@@ -227,6 +228,7 @@ function handleEvent(event: GameEvent): void {
       const target = findUnit(state, event.targetUid);
       if (!target) break;
       playSound('hit');
+      view.flashes.set(target.uid, performance.now());
       addFloat(
         target.pos,
         event.killed > 0 ? `−${event.amount} (☠${event.killed})` : `−${event.amount}`,
@@ -269,10 +271,12 @@ function handleEvent(event: GameEvent): void {
     }
 
     case 'cardDrawn':
+      playSound('card');
       hud.log(`${teamName(state, event.team)} dobiera kartę: <b>${cardById(event.cardId).name}</b>.`);
       break;
 
     case 'cardPlayed': {
+      playSound('card');
       const target = event.targetUid === undefined ? null : findUnit(state, event.targetUid);
       const card = cardById(event.cardId);
       if (target) addFloat(target.pos, card.name, '#c9a8f5');
@@ -443,11 +447,20 @@ muteButton.addEventListener('click', () => {
 
 window.addEventListener('resize', () => renderer.resize(state));
 
+// Kazdy przycisk interfejsu daje krotkie klikniecie - regulamin wymienia
+// efekt klikniecia jako jeden z obowiazkowych dzwiekow.
+document.addEventListener('click', (event) => {
+  if ((event.target as HTMLElement).closest('button')) playSound('click');
+});
+
 // --- Petla renderowania ---
 
 function frame(): void {
   const now = performance.now();
   view.floats = view.floats.filter((float) => now - float.born < float.ttl);
+  for (const [uid, born] of view.flashes) {
+    if (now - born > 400) view.flashes.delete(uid);
+  }
   renderer.draw(view);
   requestAnimationFrame(frame);
 }

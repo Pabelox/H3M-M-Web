@@ -29,6 +29,8 @@ export interface View {
   cardTargets: Set<number>;
   /** Pola, na ktore mozna wskazac kartę teleportacji. */
   cardHexes: Set<string>;
+  /** Oddzialy trafione przed chwila: identyfikator -> czas trafienia. */
+  flashes: Map<number, number>;
 }
 
 const TILE_LIGHT = '#5d6b4a';
@@ -158,13 +160,22 @@ export class Renderer {
 
   private drawUnits(view: View): void {
     const activeUid = view.state.queue[0];
+    const now = performance.now();
 
     for (const unit of view.state.units) {
       if (unit.count <= 0) continue;
-      const center =
-        unit.uid === view.movingUid && view.movingPixel
-          ? view.movingPixel
-          : this.center(unit.pos);
+
+      const moving = unit.uid === view.movingUid && view.movingPixel;
+      const center = moving ? view.movingPixel! : this.center(unit.pos);
+
+      if (!moving) {
+        // Lekkie unoszenie sie zetonow ozywia plansze. Faza zalezy od
+        // identyfikatora, zeby oddzialy nie oddychaly zgodnie jak jeden organizm.
+        const active = unit.uid === activeUid;
+        const speed = active ? 220 : 620;
+        const amplitude = active ? 2.4 : 1.1;
+        center.y += Math.sin(now / speed + unit.uid * 1.7) * amplitude;
+      }
 
       this.drawUnitToken(view, unit, center, unit.uid === activeUid);
     }
@@ -195,6 +206,7 @@ export class Renderer {
     ctx.stroke();
 
     drawSprite(ctx, def.archetype, army.palette as Palette, center.x, center.y, radius * 1.7);
+    this.drawHitFlash(view, unit, center, radius);
 
     if (isActive) this.drawActiveRing(center, radius);
     if (view.cardTargets.has(unit.uid)) this.drawCardTargetRing(center, radius);
@@ -205,6 +217,34 @@ export class Renderer {
     this.drawCountBadge(unit, center, radius, army.color);
     this.drawUpgradePips(unit, center, radius);
     this.drawRespawnPips(unit, center, radius);
+  }
+
+  /**
+   * Bialy rozblysk na zetonie tuz po otrzymaniu obrazen. Wygasa w 260 ms,
+   * wiec od razu widac, ktory oddzial zostal trafiony - przy kilku ciosach
+   * w jednej turze sam ubytek liczebnosci bywa nieczytelny.
+   */
+  private drawHitFlash(
+    view: View,
+    unit: Unit,
+    center: { x: number; y: number },
+    radius: number,
+  ): void {
+    const born = view.flashes.get(unit.uid);
+    if (born === undefined) return;
+
+    const age = (performance.now() - born) / 260;
+    if (age >= 1) return;
+
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = (1 - age) * 0.75;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius - 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffd9d0';
+    ctx.fill();
+    ctx.restore();
   }
 
   private drawActiveRing(center: { x: number; y: number }, radius: number): void {

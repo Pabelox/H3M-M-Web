@@ -269,6 +269,12 @@ muteButton.addEventListener('click', () => {
 
 window.addEventListener('resize', () => renderer.resize(state));
 
+// Kazdy przycisk interfejsu daje krotkie klikniecie - regulamin wymienia
+// efekt klikniecia jako jeden z obowiazkowych dzwiekow.
+document.addEventListener('click', (event) => {
+  if ((event.target as HTMLElement).closest('button')) playSound('click');
+});
+
 // --- Petla renderowania ---
 
 function frame(): void {

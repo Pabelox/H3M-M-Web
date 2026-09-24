@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Konfiguracja Openboksa dla trybu kiosk.
+  Plik instalowany jako /home/kiosk/.config/openbox/rc.xml
+
+  Najwazniejsza jest pusta sekcja <keyboard> - Openbox nie ma wtedy ZADNEGO
+  skrotu klawiszowego, wiec Alt+F4, Alt+Tab, Ctrl+Alt+T i klawisz Super nie
+  robia nic. Sekcja <mouse> ma wylaczone menu pod prawym i srodkowym
+  przyciskiem na pulpicie, zeby nie dalo sie otworzyc menu systemowego.
+-->
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+
+  <resistance>
+    <strength>0</strength>
+    <screen_edge_strength>0</screen_edge_strength>
+  </resistance>
+
+  <focus>
+    <focusNew>yes</focusNew>
+    <followMouse>no</followMouse>
+    <focusLast>yes</focusLast>
+    <underMouse>no</underMouse>
+  </focus>
+
+  <placement>
+    <policy>Smart</policy>
+    <center>yes</center>
+  </placement>
+
+  <theme>
+    <name>Clearlooks</name>
+    <!-- Brak dekoracji okien - kiosk nie ma paska tytulu ani przyciskow. -->
+    <keepBorder>no</keepBorder>
+    <animateIconify>no</animateIconify>
+    <titleLayout></titleLayout>
+  </theme>
+
+  <desktops>
+    <!-- Jeden pulpit - nie ma miedzy czym sie przelaczac. -->
+    <number>1</number>
+    <firstdesk>1</firstdesk>
+    <names>
+      <name>Kiosk</name>
+    </names>
+    <popupTime>0</popupTime>
+  </desktops>
+
+  <margins>
+    <top>0</top>
+    <bottom>0</bottom>
+    <left>0</left>
+    <right>0</right>
+  </margins>
+
+  <!-- Kazde okno bez dekoracji, na pelnym ekranie, bez paska zadan. -->
+  <applications>
+    <application class="*">
+      <decor>no</decor>
+      <maximized>yes</maximized>
+      <fullscreen>yes</fullscreen>
+      <skip_taskbar>yes</skip_taskbar>
+      <skip_pager>yes</skip_pager>
+    </application>
+  </applications>
+
+  <!-- PUSTA sekcja: zaden skrot klawiszowy nie jest obslugiwany. -->
+  <keyboard>
+  </keyboard>
+
+  <mouse>
+    <dragThreshold>8</dragThreshold>
+    <doubleClickTime>200</doubleClickTime>
+    <screenEdgeWarpTime>0</screenEdgeWarpTime>
+    <!--
+      Klikniecia na pulpicie nie otwieraja zadnego menu.
+      Celowo nie ma tu kontekstu "Desktop" z akcja ShowMenu.
+    -->
+  </mouse>
+
+  <menu>
+    <file>menu.xml</file>
+    <hideDelay>0</hideDelay>
+    <showIcons>no</showIcons>
+  </menu>
+
+</openbox_config>

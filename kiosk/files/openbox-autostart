@@ -1,0 +1,16 @@
+# Autostart sesji Openboksa dla uzytkownika kiosk.
+# Plik instalowany jako /home/kiosk/.config/openbox/autostart
+
+# Bez wygaszacza i bez usypiania ekranu - stacja demonstracyjna ma swiecic
+# caly czas. DPMS wylaczamy osobno, bo xset s off go nie obejmuje.
+xset s off &
+xset s noblank &
+xset -dpms &
+
+# Kursor jest potrzebny do gry (klika sie heksy), wiec NIE ukrywamy go od razu.
+# unclutter chowa go dopiero po 10 sekundach bezczynnosci i przywraca przy
+# pierwszym ruchu myszy.
+unclutter -idle 10 -root &
+
+# Przegladarka w trybie kiosk wraz z wlasnym nadzorem restartu.
+/usr/local/bin/kiosk-chromium.sh &
