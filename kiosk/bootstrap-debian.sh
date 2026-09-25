@@ -449,14 +449,41 @@ cat > /usr/local/bin/kiosk-dns <<'DNSTOOL'
 #   kiosk-dns off   - przepuszcza caly ruch (na czas aktualizacji)
 #   kiosk-dns on    - przywraca biala liste
 #   kiosk-dns stan  - pokazuje biezacy stan
+#
+# UWAGA: schowek jest POZA /etc/dnsmasq.d. Debian ma
+# "conf-dir=/etc/dnsmasq.d/,.bak", czyli wczytuje z tego katalogu KAZDY plik
+# poza koncowka .bak - samo dopisanie ".disabled" niczego by nie wylaczylo.
 set -euo pipefail
+
 FILTR=/etc/dnsmasq.d/20-kiosk-filter.conf
+OTWARTY=/etc/dnsmasq.d/20-kiosk-open.conf
+SCHOWEK=/etc/kiosk/20-kiosk-filter.conf
+
+install -d -m 0755 /etc/kiosk
+
+zastosuj() {
+    dnsmasq --test >/dev/null 2>&1 || { echo "Bledna konfiguracja dnsmasq" >&2; exit 1; }
+    systemctl restart dnsmasq
+}
+
 case "${1:-stan}" in
-    off) [ -f "$FILTR" ] && mv "$FILTR" "$FILTR.disabled"; systemctl restart dnsmasq
-         echo "Filtr DNS: WYLACZONY" ;;
-    on)  [ -f "$FILTR.disabled" ] && mv "$FILTR.disabled" "$FILTR"; systemctl restart dnsmasq
-         echo "Filtr DNS: WLACZONY" ;;
-    stan) [ -f "$FILTR" ] && echo "Filtr DNS: WLACZONY" || echo "Filtr DNS: WYLACZONY" ;;
+    off)
+        [ -f "$FILTR" ] && mv "$FILTR" "$SCHOWEK"
+        # Bez filtru potrzebny jest serwer nadrzedny, inaczej nic sie nie rozwiaze.
+        printf 'server=1.1.1.1\nserver=8.8.8.8\n' > "$OTWARTY"
+        zastosuj
+        echo "Filtr DNS: WYLACZONY (caly ruch przepuszczany)"
+        ;;
+    on)
+        rm -f "$OTWARTY"
+        [ -f "$SCHOWEK" ] && mv "$SCHOWEK" "$FILTR"
+        [ -f "$FILTR" ] || { echo "Brak pliku z filtrem: $FILTR" >&2; exit 1; }
+        zastosuj
+        echo "Filtr DNS: WLACZONY (biala lista)"
+        ;;
+    stan)
+        if [ -f "$FILTR" ]; then echo "Filtr DNS: WLACZONY"; else echo "Filtr DNS: WYLACZONY"; fi
+        ;;
     *) echo "Uzycie: kiosk-dns {on|off|stan}" >&2; exit 1 ;;
 esac
 DNSTOOL
@@ -508,6 +535,20 @@ if systemctl list-unit-files 2>/dev/null | grep -q '^systemd-resolved\.service';
     info "Wylaczono nasluch systemd-resolved na porcie 53."
 fi
 
+# Debian wczytuje /etc/dnsmasq.d tylko wtedy, gdy w /etc/dnsmasq.conf jest
+# aktywny wpis conf-dir. Gdyby go brakowalo, cala konfiguracja ponizej
+# zostalaby zignorowana, a dnsmasq forwardowalby do /etc/resolv.conf,
+# czyli sam do siebie.
+if ! grep -qE '^[[:space:]]*conf-dir=/etc/dnsmasq\.d' /etc/dnsmasq.conf 2>/dev/null; then
+    printf '\n# Kiosk: wczytaj konfiguracje z katalogu.\nconf-dir=/etc/dnsmasq.d/,.bak\n' \
+        >> /etc/dnsmasq.conf
+    info "Wlaczono conf-dir=/etc/dnsmasq.d w /etc/dnsmasq.conf."
+fi
+
+# Stary uklad zostawial plik z filtrem w katalogu pod nazwa .conf.disabled,
+# ktory dnsmasq i tak wczytywal. Sprzatamy po nim.
+rm -f /etc/dnsmasq.d/20-kiosk-filter.conf.disabled
+
 cat > /etc/dnsmasq.d/10-kiosk-base.conf <<'DNSBASE'
 # Podstawa: dnsmasq nasluchuje tylko lokalnie i nie czyta /etc/resolv.conf
 # (inaczej zrobilaby sie petla, bo resolv.conf wskazuje na dnsmasq).
@@ -518,13 +559,15 @@ domain-needed
 bogus-priv
 cache-size=1000
 
-# Nadrzedny serwer dla nazw przepuszczonych przez filtr.
-server=1.1.1.1
-
 # Localhost musi sie rozwiazywac zawsze - to na nim stoi nginx z gra.
 address=/localhost/127.0.0.1
 DNSBASE
 
+# W pliku bazowym CELOWO nie ma wpisu "server=" bez domeny. Domyslny serwer
+# nadrzedny istnieje wylacznie wtedy, gdy filtr jest zdjety (plik
+# 20-kiosk-open.conf tworzony przez "kiosk-dns off"). Dzieki temu przy
+# wlaczonym filtrze nie ma czym rozwiazac nazwy spoza bialej listy - a gdyby
+# plik z filtrem nie wszedl, awaria jest glosna zamiast cichej.
 cat > /etc/dnsmasq.d/20-kiosk-filter.conf <<DNSFILTER
 # --- CZARNA LISTA (domyslna) ---
 # Kazda nazwa nieobjeta biala lista rozwiazuje sie na 0.0.0.0.
@@ -536,6 +579,9 @@ address=/#/0.0.0.0
 server=/$UCZELNIA/1.1.1.1
 server=/www.$UCZELNIA/1.1.1.1
 DNSFILTER
+
+rm -f /etc/dnsmasq.d/20-kiosk-open.conf
+dnsmasq --test || die "Konfiguracja dnsmasq jest bledna."
 
 # Na Debianie /etc/resolv.conf nadpisuje dhclient przy kazdym odnowieniu
 # dzierzawy DHCP. "supersede" sprawia, ze sam wpisuje tam nasz resolwer.
@@ -578,7 +624,12 @@ check "nginx dziala"                        "systemctl is-active nginx"
 check "gra odpowiada na localhoscie"        "curl -fsS -o /dev/null http://localhost/"
 check "gra ma pliki dzwiekowe"              "curl -fsS -o /dev/null http://localhost/assets/sfx/music.wav"
 check "dnsmasq dziala"                      "systemctl is-active dnsmasq"
-check "filtr DNS blokuje spoza listy"       "[ \"\$(getent hosts facebook.com | awk '{print \$1}')\" = 0.0.0.0 ]"
+# getent ahostsv4 jest jednoznaczne (tylko IPv4) i nie zalezy od tego,
+# czy system woli najpierw zapytac o AAAA.
+check "konfiguracja dnsmasq poprawna"       "dnsmasq --test"
+check "resolv.conf wskazuje na dnsmasq"     "grep -q '^nameserver 127.0.0.1' /etc/resolv.conf"
+check "filtr DNS blokuje spoza listy"       "[ \"\$(getent ahostsv4 facebook.com 2>/dev/null | awk 'NR==1{print \$1}')\" = 0.0.0.0 ]"
+check "biala lista przepuszcza $UCZELNIA"   "ip=\$(getent ahostsv4 $UCZELNIA 2>/dev/null | awk 'NR==1{print \$1}'); [ -n \"\$ip\" ] && [ \"\$ip\" != 0.0.0.0 ]"
 check "narzedzie kiosk-update gotowe"       "[ -x /usr/local/bin/kiosk-update ]"
 
 echo
