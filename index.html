@@ -8,15 +8,18 @@
   <body>
     <div id="app">
       <header class="topbar">
-        <!-- TODO: podmienić href i grafikę na logo właściwej uczelni -->
         <a
           class="logo"
-          href="https://www.example.edu.pl"
+          href="https://wsi.edu.pl"
           target="_blank"
           rel="noopener noreferrer"
           title="Przejdź do strony uczelni"
         >
-          <img src="assets/ui/logo-uczelni.svg" alt="Logo uczelni" />
+          <img src="assets/ui/logo-uczelni.svg" alt="Logo Wyższej Szkoły Informatyki i Zarządzania w Bielsku-Białej" />
+          <span class="logo-text">
+            <strong>WSIZ</strong>
+            <span>Wyższa Szkoła Informatyki<br />i Zarządzania w Bielsku-Białej</span>
+          </span>
         </a>
 
         <div class="titles">
@@ -36,6 +39,7 @@
         <section class="board-area">
           <div class="initiative" id="initiative"></div>
           <canvas id="board"></canvas>
+          <div class="selected" id="selected"></div>
         </section>
 
         <aside class="panel" id="panel-B"></aside>
@@ -55,8 +59,8 @@
 
         <!-- Stały podpis autora wymagany przez regulamin projektu -->
         <div class="signature">
-          <span class="signature-name">Imię Nazwisko</span>
-          <span class="signature-index">nr albumu 000000</span>
+          <span class="signature-name">Paweł Kłosek</span>
+          <span class="signature-index">nr albumu 4148</span>
         </div>
       </footer>
 

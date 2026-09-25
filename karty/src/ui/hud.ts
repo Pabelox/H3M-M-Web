@@ -2,7 +2,8 @@ import { cardById } from '../core/cards';
 import { activeUnit, findUnit, teamColor, teamName } from '../core/state';
 import { hpPool, maxHpPool, stats } from '../core/stats';
 import type { GameState, Team, Unit } from '../core/types';
-import { creatureDef } from '../core/units';
+import { creatureDef, faction } from '../core/units';
+import { spriteCanvas, type Palette } from '../render/pixels';
 
 /** Ostatni rzut kostka obrazen - pokazywany w rogu stolu. */
 export interface DiceDisplay {
@@ -42,6 +43,7 @@ export class Hud {
   private readonly diceBox = el('dice');
   private readonly logBox = el('log');
   private readonly handBox = el('hand');
+  private readonly selectedBox = el('selected');
   private readonly overlay = el('overlay');
   private readonly overlayText = el('overlay-text');
 
@@ -92,7 +94,13 @@ export class Hud {
     return this.entries.slice();
   }
 
-  update(state: GameState, dice: DiceDisplay | null, busy: boolean, playableCards: Set<string>): void {
+  update(
+    state: GameState,
+    dice: DiceDisplay | null,
+    busy: boolean,
+    playableCards: Set<string>,
+    selectedUid: number | null,
+  ): void {
     this.roundLabel.textContent = `Runda ${state.round}`;
 
     const actor = activeUnit(state);
@@ -107,6 +115,7 @@ export class Hud {
     this.renderInitiative(state);
     this.renderDice(dice);
     this.renderHand(state, actor, busy, playableCards);
+    this.renderSelected(state, selectedUid);
 
     const disabled = busy || state.winner !== null;
     (el('btn-defend') as HTMLButtonElement).disabled = disabled;
@@ -163,6 +172,98 @@ export class Hud {
       : `<div class="hand-note">Następna karta za ${nextCardIn} tur.</div>`;
 
     this.handBox.innerHTML = `<div class="hand-cards">${cards}</div>${notice}`;
+  }
+
+  // --- Panel wybranego oddzialu ---
+
+  /**
+   * Karta oddzialu wskazanego klikiem. Panele boczne pokazuja cala armie
+   * w skrocie, a tutaj jest pelen obraz jednego oddzialu: podobizna,
+   * statystyki po ulepszeniach, cechy i lista otrzymanych kart.
+   */
+  private renderSelected(state: GameState, selectedUid: number | null): void {
+    const unit = selectedUid === null ? undefined : findUnit(state, selectedUid);
+    if (!unit) {
+      this.selectedBox.innerHTML =
+        '<div class="sel-empty">Kliknij oddział na planszy,<br />aby zobaczyć jego kartę.</div>';
+      return;
+    }
+
+    const def = creatureDef(unit.defId);
+    const army = faction(state.factions[unit.team]);
+    const effective = stats(unit);
+    const dead = unit.count <= 0;
+    const isActive = state.queue[0] === unit.uid;
+
+    // Podobizna to ta sama sylwetka pixel art, ktora stoi na planszy.
+    const portrait = spriteCanvas(def.archetype, army.palette as Palette).toDataURL();
+
+    /** Statystyka z zaznaczeniem, o ile podniosly ja ulepszenia. */
+    const stat = (label: string, value: number, base: number): string => {
+      const delta = value - base;
+      const mark =
+        delta > 0 ? `<em class="is-boosted">+${delta}</em>`
+        : delta < 0 ? `<em class="is-lowered">${delta}</em>`
+        : '';
+      return `<div class="sel-stat"><span>${label}</span><b>${value}</b>${mark}</div>`;
+    };
+
+    const status = dead
+      ? `<span class="sel-dead">rozbity — odrodzeń: ${unit.respawnsLeft}</span>`
+      : isActive
+        ? '<span class="sel-active">jego tura</span>'
+        : `<span class="sel-wait">w kolejce</span>`;
+
+    const upgrades =
+      unit.upgrades.length > 0
+        ? `<ul class="sel-upgrades">${unit.upgrades
+            .map((up) => `<li>${up.name}</li>`)
+            .join('')}</ul>`
+        : '<div class="sel-none">bez ulepszeń</div>';
+
+    const ammo = effective.flags.includes('strzelec')
+      ? `<div class="sel-stat"><span>Amunicja</span><b>${unit.ammo}</b></div>`
+      : '';
+
+    this.selectedBox.innerHTML = `
+      <div class="sel-card ${dead ? 'is-dead' : ''}" style="--army:${army.color}">
+        <div class="sel-head">
+          <img class="sel-portrait" src="${portrait}" alt="" />
+          <div class="sel-title">
+            <div class="sel-name"><span class="unit-tier">${def.tier}</span>${def.name}</div>
+            <div class="sel-army">${army.name}</div>
+            <div class="sel-status">${status}</div>
+          </div>
+          <div class="sel-count">
+            <b>${dead ? '—' : unit.count}</b>
+            <span>sztuk</span>
+          </div>
+        </div>
+
+        <div class="sel-stats">
+          ${stat('Atak', effective.attack, def.attack)}
+          ${stat('Obrona', effective.defense, def.defense)}
+          ${stat('Obrażenia', effective.damageMin, def.damageMin)}
+          ${stat('Szybkość', effective.speed, def.speed)}
+          <div class="sel-stat"><span>Życie / szt.</span><b>${def.hp}</b></div>
+          ${ammo}
+        </div>
+
+        <div class="sel-flags">
+          ${effective.flags.map((f) => `<span>${FLAG_ICONS[f] ?? ''} ${f.replace(/-/g, ' ')}</span>`).join('') || '<span class="sel-none">brak cech specjalnych</span>'}
+        </div>
+
+        <div class="sel-section">
+          <div class="sel-label">Ulepszenia ${unit.upgrades.length}/${state.rules.maxUpgradesPerUnit}</div>
+          ${upgrades}
+        </div>
+
+        <div class="sel-section">
+          <div class="sel-label">Odrodzenia</div>
+          <div class="sel-respawns">${'●'.repeat(unit.respawnsLeft)}${'○'.repeat(Math.max(0, state.rules.maxRespawns - unit.respawnsLeft))} <em>${unit.respawnsLeft} z ${state.rules.maxRespawns}</em></div>
+        </div>
+      </div>
+    `;
   }
 
   // --- Panele armii ---

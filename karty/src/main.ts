@@ -27,6 +27,14 @@ let busy = false;
 /** Oddzial wskazany karta teleportacji, czekajacy na wybor pola docelowego. */
 let pendingTeleportUid: number | null = null;
 let matchRecord: MatchRecord | null = null;
+/** Oddzial pokazywany w panelu szczegolow. */
+let selectedUid: number | null = null;
+/**
+ * Dopoki gracz sam niczego nie kliknie, panel podaza za oddzialem, ktory ma
+ * ture - dzieki temu nigdy nie jest pusty i pokazuje to, co wlasnie istotne.
+ * Klikniecie przypina wybor, Escape przywraca podazanie.
+ */
+let selectionPinned = false;
 
 const view: View = {
   state,
@@ -40,6 +48,7 @@ const view: View = {
   cardTargets: new Set(),
   cardHexes: new Set(),
   flashes: new Map(),
+  selectedUid: null,
 };
 
 const gm = new GameMasterPanel(startBattle);
@@ -59,6 +68,8 @@ function startBattle(setup: MatchSetup): void {
   dice = null;
   busy = false;
   pendingTeleportUid = null;
+  selectedUid = null;
+  selectionPinned = false;
   view.floats = [];
   hud.clearSelection();
 
@@ -108,6 +119,9 @@ function refresh(): void {
   const actor = activeUnit(state);
   const playable = new Set<string>();
 
+  if (!selectionPinned) selectedUid = actor?.uid ?? selectedUid;
+  view.selectedUid = selectedUid;
+
   if (actor && !state.winner && !busy) {
     const reach = reachableHexes(state, actor);
     view.reach = reach;
@@ -125,7 +139,7 @@ function refresh(): void {
     view.reach = null;
   }
 
-  hud.update(state, dice, busy, playable);
+  hud.update(state, dice, busy, playable, selectedUid);
 }
 
 /** Podswietla to, co mozna wskazac aktualnie wybrana karta. */
@@ -373,6 +387,15 @@ canvas.addEventListener('click', (event) => {
   const key = hexKey(hex);
   const target = unitAt(state, hex);
 
+  if (target) {
+    // Klikniecie w oddzial zawsze pokazuje jego karte - takze wtedy, gdy ten
+    // sam klik wywola atak albo ruch. Przeliczamy caly widok, bo skrocone
+    // odswiezenie gubilo liste kart mozliwych do zagrania.
+    selectedUid = target.uid;
+    selectionPinned = true;
+    refresh();
+  }
+
   // Tryb wskazywania celu karty ma pierwszenstwo przed zwyklymi akcjami.
   const selectedCard = hud.selected;
   if (selectedCard) {
@@ -429,6 +452,8 @@ window.addEventListener('keydown', (event) => {
   if (key === 'escape') {
     hud.clearSelection();
     pendingTeleportUid = null;
+    // Panel wraca do podazania za oddzialem, ktory ma ture.
+    selectionPinned = false;
     refresh();
     return;
   }

@@ -195,7 +195,7 @@ Filtrowanie DNS nie działa:
 
 ```bash
 systemctl status dnsmasq
-dig +short example.edu.pl     # powinno zwrócić prawdziwy adres
+dig +short wsi.edu.pl          # powinno zwrócić prawdziwy adres
 dig +short facebook.com       # powinno zwrócić 0.0.0.0
 ```
 

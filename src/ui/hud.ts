@@ -1,4 +1,4 @@
-import { creatureDef, hasFlag } from '../core/factions';
+import { creatureDef, FACTIONS, hasFlag } from '../core/factions';
 import { activeUnit, findUnit, livingUnits, teamColor, teamName, unitHpPool } from '../core/state';
 import type { CreatureDef, GameState, Team, Unit } from '../core/types';
 
@@ -39,6 +39,7 @@ export class Hud {
   private readonly turnLabel = el('turn-label');
   private readonly diceBox = el('dice');
   private readonly logBox = el('log');
+  private readonly selectedBox = el('selected');
   private readonly overlay = el('overlay');
   private readonly overlayText = el('overlay-text');
 
@@ -69,7 +70,12 @@ export class Hud {
     this.logBox.innerHTML = '';
   }
 
-  update(state: GameState, dice: DiceDisplay | null, busy: boolean): void {
+  update(
+    state: GameState,
+    dice: DiceDisplay | null,
+    busy: boolean,
+    selectedUid: number | null,
+  ): void {
     this.roundLabel.textContent = `Runda ${state.round}`;
 
     const actor = activeUnit(state);
@@ -83,6 +89,7 @@ export class Hud {
     this.renderPanel('B', state);
     this.renderInitiative(state);
     this.renderDice(dice);
+    this.renderSelected(state, selectedUid);
 
     const disabled = busy || state.winner !== null;
     (el('btn-defend') as HTMLButtonElement).disabled = disabled;
@@ -92,6 +99,64 @@ export class Hud {
     if (state.winner) {
       this.overlayText.textContent = `${teamName(state, state.winner)} zwycięża w rundzie ${state.round}`;
     }
+  }
+
+  /**
+   * Karta oddzialu wskazanego klikiem. Panele boczne pokazuja cala armie
+   * w skrocie, a tutaj sa pelne dane jednego oddzialu.
+   */
+  private renderSelected(state: GameState, selectedUid: number | null): void {
+    const unit = selectedUid === null ? undefined : findUnit(state, selectedUid);
+    if (!unit) {
+      this.selectedBox.innerHTML =
+        '<div class="sel-empty">Kliknij oddzial na planszy, aby zobaczyc jego karte.</div>';
+      return;
+    }
+
+    const def = creatureDef(unit.defId);
+    const army = FACTIONS[state.factions[unit.team]];
+    const dead = unit.count <= 0;
+    const isActive = state.queue[0] === unit.uid;
+    const pool = dead ? 0 : unitHpPool(unit);
+
+    const status = dead
+      ? '<span class="sel-dead">rozbity</span>'
+      : isActive
+        ? '<span class="sel-active">jego tura</span>'
+        : '<span class="sel-wait">w kolejce</span>';
+
+    const ammo =
+      def.shots > 0
+        ? '<div class="sel-stat"><span>Amunicja</span><b>' + unit.ammo + '</b></div>'
+        : '';
+
+    const flags =
+      def.flags.length > 0
+        ? def.flags.map((flag) => '<span>' + flag.replace(/-/g, ' ') + '</span>').join('')
+        : '<span class="sel-none">brak cech specjalnych</span>';
+
+    this.selectedBox.innerHTML = [
+      '<div class="sel-card ' + (dead ? 'is-dead' : '') + '" style="--army:' + army.color + '">',
+      '  <div class="sel-head">',
+      '    <div class="sel-title">',
+      '      <div class="sel-name"><span class="unit-tier">' + def.tier + '</span>' + def.name + '</div>',
+      '      <div class="sel-army">' + army.name + '</div>',
+      '      <div class="sel-status">' + status + '</div>',
+      '    </div>',
+      '    <div class="sel-count"><b>' + (dead ? '&mdash;' : unit.count) + '</b><span>sztuk</span></div>',
+      '  </div>',
+      '  <div class="sel-stats">',
+      '    <div class="sel-stat"><span>Atak</span><b>' + def.attack + '</b></div>',
+      '    <div class="sel-stat"><span>Obrona</span><b>' + def.defense + '</b></div>',
+      '    <div class="sel-stat"><span>Obrazenia</span><b>' + def.damageMin + '-' + def.damageMax + '</b></div>',
+      '    <div class="sel-stat"><span>Szybkosc</span><b>' + def.speed + '</b></div>',
+      '    <div class="sel-stat"><span>Zycie / szt.</span><b>' + def.hp + '</b></div>',
+      '    <div class="sel-stat"><span>Pula zycia</span><b>' + pool + '</b></div>',
+      '    ' + ammo,
+      '  </div>',
+      '  <div class="sel-flags">' + flags + '</div>',
+      '</div>',
+    ].join('');
   }
 
   private renderPanel(team: Team, state: GameState): void {

@@ -39,12 +39,16 @@ i JavaScript, bez żadnej zależności pobieranej w czasie działania.
   z tym samym ziarnem przebiega identycznie. W „Kartach Bitwy" ziarno jest
   zapisywane w historii, żeby dało się odtworzyć konkretną rozgrywkę.
 
-## Do uzupełnienia przed oddaniem
+## Identyfikacja wizualna
 
-W obu grach, w plikach `index.html`:
+Obie gry mają stały podpis autora w prawym dolnym rogu (**Paweł Kłosek,
+nr albumu 4148**) oraz logo uczelni w lewym górnym rogu, będące klikalnym
+odnośnikiem do [wsi.edu.pl](https://wsi.edu.pl). Logo leży na jasnej płytce,
+bo kolorowy znak WSIZ jest nieczytelny na ciemnym interfejsie.
 
-- podpis autora — `Imię Nazwisko` i `nr albumu 000000`,
-- logo uczelni (`public/assets/ui/logo-uczelni.svg`) wraz z adresem jej strony
-  w atrybucie `href`.
+Domena uczelni jest wpisana na białą listę DNS kiosku
+(`kiosk/files/dnsmasq-kiosk.conf`), żeby odnośnik działał także na maszynie
+z filtrowanym ruchem.
 
 Wykorzystane materiały i licencje: [`ASSETS.md`](ASSETS.md).
+Konfiguracja stacji demonstracyjnej: [`kiosk/README.md`](kiosk/README.md).

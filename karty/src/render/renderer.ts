@@ -31,6 +31,8 @@ export interface View {
   cardHexes: Set<string>;
   /** Oddzialy trafione przed chwila: identyfikator -> czas trafienia. */
   flashes: Map<number, number>;
+  /** Oddzial pokazywany w panelu szczegolow. */
+  selectedUid: number | null;
 }
 
 const TILE_LIGHT = '#5d6b4a';
@@ -208,6 +210,7 @@ export class Renderer {
     drawSprite(ctx, def.archetype, army.palette as Palette, center.x, center.y, radius * 1.7);
     this.drawHitFlash(view, unit, center, radius);
 
+    if (unit.uid === view.selectedUid && !isActive) this.drawSelectionRing(center, radius);
     if (isActive) this.drawActiveRing(center, radius);
     if (view.cardTargets.has(unit.uid)) this.drawCardTargetRing(center, radius);
     if (view.shootable.has(unit.uid)) this.drawCrosshair(center, radius);
@@ -244,6 +247,24 @@ export class Renderer {
     ctx.arc(center.x, center.y, radius - 2, 0, Math.PI * 2);
     ctx.fillStyle = '#ffd9d0';
     ctx.fill();
+    ctx.restore();
+  }
+
+  /**
+   * Przerywana obwodka oddzialu ogladanego w panelu szczegolow.
+   * Celowo inna niz zlota obwodka oddzialu, ktory ma ture - to dwie rozne
+   * informacje i nie moga wygladac tak samo.
+   */
+  private drawSelectionRing(center: { x: number; y: number }, radius: number): void {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.lineDashOffset = -performance.now() / 55;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius + 5, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(236, 240, 248, 0.85)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
     ctx.restore();
   }
 

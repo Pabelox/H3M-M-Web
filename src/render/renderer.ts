@@ -35,6 +35,8 @@ export interface View {
   movingUid: number | null;
   movingPixel: { x: number; y: number } | null;
   floats: FloatText[];
+  /** Oddzial pokazywany w panelu szczegolow. */
+  selectedUid: number | null;
 }
 
 export class Renderer {
@@ -165,6 +167,7 @@ export class Renderer {
         teamColor(view.state, unit.team),
         unit.uid === activeUid,
         view.shootable.has(unit.uid),
+        unit.uid === view.selectedUid,
       );
     }
   }
@@ -175,6 +178,7 @@ export class Renderer {
     color: string,
     isActive: boolean,
     isShootable: boolean,
+    isSelected: boolean,
   ): void {
     const def = creatureDef(unit.defId);
     const radius = this.hexSize * 0.72;
@@ -218,6 +222,7 @@ export class Renderer {
     }
 
     if (hasFlag(def, 'latajacy')) this.drawWings(center, radius, color);
+    if (isSelected && !isActive) this.drawSelectionRing(center, radius);
     if (isActive) this.drawActiveRing(center, radius);
     if (isShootable) this.drawCrosshair(center, radius);
     if (unit.defending) this.drawShield(center, radius);
@@ -242,6 +247,20 @@ export class Renderer {
       );
       ctx.stroke();
     }
+  }
+
+  /** Przerywana obwodka oddzialu ogladanego w panelu szczegolow. */
+  private drawSelectionRing(center: { x: number; y: number }, radius: number): void {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.lineDashOffset = -performance.now() / 55;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius + 5, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(236, 240, 248, 0.85)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
   }
 
   private drawActiveRing(center: { x: number; y: number }, radius: number): void {

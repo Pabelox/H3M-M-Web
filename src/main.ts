@@ -19,6 +19,9 @@ let state: GameState = createInitialState(Date.now() >>> 0, 'zamek', 'inferno');
 let dice: DiceDisplay | null = null;
 /** Blokuje wejscie gracza w trakcie animacji, zeby nie zakolejkowac dwoch akcji. */
 let busy = false;
+/** Oddzial pokazywany w panelu szczegolow; podaza za tura, dopoki gracz nie kliknie. */
+let selectedUid: number | null = null;
+let selectionPinned = false;
 
 const view: View = {
   state,
@@ -29,6 +32,7 @@ const view: View = {
   movingUid: null,
   movingPixel: null,
   floats: [],
+  selectedUid: null,
 };
 
 const setup = new SetupScreen(startBattle);
@@ -45,6 +49,8 @@ function startBattle(factionA: FactionId, factionB: FactionId): void {
   state = createInitialState(Date.now() >>> 0, factionA, factionB);
   dice = null;
   busy = false;
+  selectedUid = null;
+  selectionPinned = false;
   view.floats = [];
 
   renderer.resize(state);
@@ -61,6 +67,9 @@ function refresh(): void {
   view.shootable = new Set();
 
   const actor = activeUnit(state);
+  if (!selectionPinned) selectedUid = actor?.uid ?? selectedUid;
+  view.selectedUid = selectedUid;
+
   if (actor && !state.winner && !busy) {
     const reach = reachableHexes(state, actor);
     view.reach = reach;
@@ -74,7 +83,7 @@ function refresh(): void {
     view.reach = null;
   }
 
-  hud.update(state, dice, busy);
+  hud.update(state, dice, busy, selectedUid);
 }
 
 // --- Wykonanie akcji wraz z animacja ---
@@ -89,7 +98,7 @@ async function perform(action: Action): Promise<void> {
   view.reach = null;
   view.meleeFrom = new Map();
   view.shootable = new Set();
-  hud.update(state, dice, busy);
+  hud.update(state, dice, busy, selectedUid);
 
   const moveEvent = result.events.find((e) => e.type === 'moved');
   if (moveEvent && moveEvent.type === 'moved' && moveEvent.path.length > 0) {
@@ -237,6 +246,14 @@ canvas.addEventListener('click', (event) => {
   const key = hexKey(hex);
   const target = unitAt(state, hex);
 
+  // Klikniecie w oddzial zawsze pokazuje jego karte, takze gdy ten sam klik
+  // wywola atak albo ruch.
+  if (target) {
+    selectedUid = target.uid;
+    selectionPinned = true;
+    refresh();
+  }
+
   if (target && target.team !== actor.team) {
     if (view.shootable.has(target.uid)) {
       void perform({ kind: 'shoot', targetUid: target.uid });
@@ -254,8 +271,14 @@ canvas.addEventListener('click', (event) => {
 });
 
 window.addEventListener('keydown', (event) => {
-  if (busy || state.winner) return;
   const key = event.key.toLowerCase();
+  if (key === 'escape') {
+    // Panel wraca do podazania za oddzialem, ktory ma ture.
+    selectionPinned = false;
+    refresh();
+    return;
+  }
+  if (busy || state.winner) return;
   if (key === 'o') void perform({ kind: 'defend' });
   if (key === 'c') void perform({ kind: 'wait' });
 });
