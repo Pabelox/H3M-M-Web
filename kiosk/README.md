@@ -11,7 +11,8 @@ i uruchomienia" w dokumentacji PDF.
 
 | Plik | Rola |
 |---|---|
-| `install.sh` | Pełna konfiguracja maszyny — uruchamiany raz, na VM, przez `sudo` |
+| `bootstrap-debian.sh` | **Debian: instalacja od zera jednym poleceniem** — pakiety, kod, budowanie, kiosk |
+| `install.sh` | Ubuntu: konfiguracja maszyny z już wgranym kodem |
 | `deploy.sh` | Wgranie zbudowanej gry z komputera dewelopera na maszynę |
 | `files/lightdm.conf` | Automatyczne logowanie konta `kiosk` |
 | `files/openbox-rc.xml` | Openbox **bez żadnego skrótu klawiszowego** |
@@ -25,6 +26,91 @@ i uruchomienia" w dokumentacji PDF.
 | `files/kiosk-resolved.conf` | Zwolnienie portu 53 dla dnsmasq |
 
 ---
+
+## Wariant A — Debian, jedno polecenie (zalecane)
+
+`bootstrap-debian.sh` prowadzi **minimalną, terminalową instalację Debiana**
+do działającego kiosku: instaluje pakiety i Node.js, klonuje repozytorium,
+buduje grę, publikuje ją i konfiguruje cały system. To jedyny plik, który
+trzeba skopiować na maszynę.
+
+Na świeżo zainstalowanym Debianie, jako root:
+
+```bash
+apt-get update && apt-get install -y curl
+```
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Pabelox/H3M-M-Web/main/kiosk/bootstrap-debian.sh -o bootstrap-debian.sh
+```
+
+```bash
+bash bootstrap-debian.sh
+```
+
+Skrypt kończy się listą szesnastu kontroli — każda musi być `[ OK ]`.
+
+### Parametry
+
+Wszystkie opcjonalne, podawane jako zmienne środowiskowe:
+
+| Zmienna | Domyślnie | Znaczenie |
+|---|---|---|
+| `GAME` | `karty` | która gra: `karty` albo `glowna` |
+| `REPO_URL` | adres HTTPS | źródło kodu |
+| `REPO_BRANCH` | `main` | gałąź do pobrania |
+| `ADMIN_USER` | `$SUDO_USER` lub `admin` | konto z dostępem po SSH |
+| `UCZELNIA` | `wsi.edu.pl` | domena przepuszczana przez filtr DNS |
+| `REBOOT` | — | `1` restartuje maszynę na końcu |
+
+```bash
+GAME=glowna REBOOT=1 bash bootstrap-debian.sh
+```
+
+### Dlaczego HTTPS, a nie SSH
+
+Domyślnym źródłem jest `https://github.com/Pabelox/H3M-M-Web.git`, a nie
+`git@github.com:...`. Świeżo zainstalowana maszyna nie ma klucza
+zarejestrowanego na GitHubie, więc klonowanie po SSH zakończyłoby się
+`Permission denied (publickey)`. Adres SSH ma sens dopiero po wgraniu na
+maszynę klucza wdrożeniowego:
+
+```bash
+REPO_URL=git@github.com:Pabelox/H3M-M-Web.git bash bootstrap-debian.sh
+```
+
+### Narzędzia zainstalowane przy okazji
+
+| Polecenie | Działanie |
+|---|---|
+| `sudo kiosk-update` | pobiera nową wersję gry, buduje ją i podmienia |
+| `sudo kiosk-dns off` \| `on` | zdejmuje / przywraca filtr DNS |
+| `sudo systemctl stop lightdm` | tymczasowe wyjście z kiosku |
+
+`kiosk-update` sam zdejmuje filtr DNS na czas pobierania i przywraca go na
+końcu — bez tego nie dosięgnąłby GitHuba ani rejestru npm, bo filtr blokuje
+wszystko poza białą listą.
+
+### Różnice wobec Ubuntu
+
+| Zagadnienie | Ubuntu 22.04 | Debian |
+|---|---|---|
+| Pakiet przeglądarki | `chromium-browser` (snap) | `chromium` (zwykły .deb) |
+| `systemd-resolved` | zawsze obecny, trzyma port 53 | zwykle nieobecny — skrypt sprawdza |
+| `/etc/resolv.conf` | netplan / resolved | nadpisywany przez `dhclient` |
+| Autologowanie | sama konfiguracja LightDM | dodatkowo grupa `autologin` |
+
+Trzy rzeczy, które wynikają z powyższego i bez których instalacja by nie
+zadziałała: na Debianie konto kiosku musi należeć do grupy `autologin`,
+do `/etc/dhcp/dhclient.conf` trafia `supersede domain-name-servers 127.0.0.1;`
+(inaczej DHCP przywraca własny resolwer przy każdym odnowieniu dzierżawy),
+a przy `--no-install-recommends` trzeba jawnie doinstalować
+`xserver-xorg-input-all` — bez tego maszyna wstaje z obrazem, ale nie reaguje
+na mysz i w grę nie da się zagrać.
+
+---
+
+## Wariant B — Ubuntu, konfiguracja ręczna
 
 ## 1. Utworzenie maszyny w VirtualBox
 
